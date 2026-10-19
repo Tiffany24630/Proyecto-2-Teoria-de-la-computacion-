@@ -15,7 +15,8 @@ def convertir_a_cnf(gramatica: Gramatica, simbolo_inicial: str | None = None) ->
     if inicial_original not in g:
         raise ValueError(f"El símbolo inicial '{inicial_original}' no existe en la gramática.")
 
-    existentes = set(g)
+    # Los auxiliares no deben ocultar terminales ni no terminales existentes.
+    existentes = set(g) | {s for ps in g.values() for p in ps for s in p}
     inicial = nombre_nuevo("S0", existentes)
     g[inicial] = [(inicial_original,)]
     g = eliminar_epsilon(g, inicial)
@@ -34,7 +35,6 @@ def convertir_a_cnf(gramatica: Gramatica, simbolo_inicial: str | None = None) ->
 
     no_terminales = set(g)
     terminales_a_no_terminal: dict[str, str] = {}
-    existentes = set(g)
 
     for nt in list(g):
         nuevas = []
@@ -60,7 +60,6 @@ def convertir_a_cnf(gramatica: Gramatica, simbolo_inicial: str | None = None) ->
 
         g[nt] = list(dict.fromkeys(nuevas))
 
-    existentes = set(g)
     binaria: Gramatica = {nt: [] for nt in g}
     contador = 1
 
@@ -89,6 +88,8 @@ def convertir_a_cnf(gramatica: Gramatica, simbolo_inicial: str | None = None) ->
 def es_cnf(gramatica: Gramatica, simbolo_inicial: str | None = None) -> bool:
     inicial = simbolo_inicial or next(iter(gramatica), None)
     no_terminales = set(gramatica)
+    if inicial not in no_terminales:
+        return False
 
     for nt, producciones in gramatica.items():
         for produccion in producciones:
@@ -102,6 +103,8 @@ def es_cnf(gramatica: Gramatica, simbolo_inicial: str | None = None) -> bool:
                 
             elif len(produccion) == 0:
                 if nt != inicial:
+                    return False
+                if any(inicial in p for ps in gramatica.values() for p in ps):
                     return False
                 
             else:

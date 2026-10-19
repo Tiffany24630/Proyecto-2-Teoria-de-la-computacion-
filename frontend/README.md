@@ -1,16 +1,25 @@
-# React + Vite
+# Interfaz del analizador CYK
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React, Vite, CSS y D3.js. Muestra el veredicto, tiempo de validación, árbol de derivación
+y tabla dinámica. Permite editar la gramática y analizarla sin ingresar frases.
 
-Currently, two official plugins are available:
+Desde la raíz del repositorio, con Node.js 22.12+ y Python 3.10+:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run build
+python app.py
+```
 
-## React Compiler
+Abre `http://localhost:5000`. El backend sirve `frontend/dist` y `/api/parse` en el
+mismo origen. Recompila al modificar el código de la interfaz.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Para comprobar el código y los flujos de usuario:
 
-## Expanding the Oxlint configuration
+```bash
+npm --prefix frontend run lint
+node tests/browser.mjs
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+La prueba de navegador requiere Chrome o Edge. Consulta el [README principal](../README.md)
+y el [reporte técnico](../DOCUMENTACION.md) para la ejecución con Docker y las pruebas de Python.

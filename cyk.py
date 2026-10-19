@@ -53,8 +53,8 @@ def cyk(gramatica: Gramatica, inicial: str, palabras: list[str]) -> tuple[bool, 
             j = i + largo - 1
 
             for k in range(i, j):  # izquierda = [i..k], derecha = [k+1..j]
-                for B in T[i][k]:
-                    for C in T[k + 1][j]:
+                for B in sorted(T[i][k]):
+                    for C in sorted(T[k + 1][j]):
                         for A in binarias.get((B, C), ()):
                             if A not in T[i][j]:
                                 T[i][j][A] = ("bin", k, B, C)
@@ -70,7 +70,9 @@ def construir_arbol(T: Tabla, no_terminal: str, i: int, j: int) -> dict:
     Retorna un diccionario representativo del nodo:
     {"simbolo": str, "hijos": list}
     """
-    if i >= len(T) or j >= len(T) or no_terminal not in T[i][j]:
+    if not T and i == 0 and j == -1:
+        return {"simbolo": no_terminal, "hijos": [{"simbolo": "ε", "hijos": []}]}
+    if i < 0 or j < 0 or i >= len(T) or j >= len(T) or no_terminal not in T[i][j]:
         return {"simbolo": no_terminal, "hijos": []}
 
     info = T[i][j][no_terminal]

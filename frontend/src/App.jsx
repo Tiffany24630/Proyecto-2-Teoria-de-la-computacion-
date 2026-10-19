@@ -15,52 +15,89 @@ Det -> a | the`;
 const PRUEBAS_RAPIDAS = [
   { texto: "She eats a cake with a fork", esperado: true },
   { texto: "The cat drinks the beer", esperado: true },
-  { texto: "He cuts meat with a knife", esperado: true },
+  { texto: "He cuts the meat with a knife", esperado: true },
+  { texto: "He cuts meat with a knife", esperado: false },
   { texto: "The cat drinks beer", esperado: false },
   { texto: "She eats fork", esperado: false },
   { texto: "She runs fast", esperado: false }
 ];
 
+async function analizar(gramatica, frase, soloGramatica = false, signal) {
+  const resp = await fetch("/api/parse", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gramatica, frase, solo_gramatica: soloGramatica }),
+    signal
+  });
+  const data = await resp.json();
+  if (!resp.ok || data.error) {
+    throw new Error(data.error || "No se pudo analizar la gramática.");
+  }
+  return data;
+}
+
 export default function App() {
-  const params = new URLSearchParams(window.location.search);
-  const fraseParam = params.get("frase") || "She eats a cake with a fork";
-  const tabParam = params.get("tab") || "tree";
+  const [configInicial] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      frase: params.get("frase") ?? "She eats a cake with a fork",
+      tab: params.get("tab") === "matrix" ? "matrix" : "tree"
+    };
+  });
 
   const [gramatica, setGramatica] = useState(DEFAULT_GRAMMAR);
-  const [frase, setFrase] = useState(fraseParam);
-  const [cargando, setCargando] = useState(false);
+  const [frase, setFrase] = useState(configInicial.frase);
+  const [cargando, setCargando] = useState(true);
   const [resultado, setResultado] = useState(null);
-  const [tab, setTab] = useState(tabParam);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState(configInicial.tab);
   const [verCNF, setVerCNF] = useState(false);
 
-  const manejarEnvio = async (fraseAProbar = frase) => {
-    if (!fraseAProbar.trim()) return;
+  const enviarPeticion = async (fraseAProbar, soloGramatica = false) => {
     setCargando(true);
+    setError("");
     try {
-      const resp = await fetch("/api/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gramatica, frase: fraseAProbar })
-      });
-      const data = await resp.json();
+      const data = await analizar(gramatica, soloGramatica ? "" : fraseAProbar, soloGramatica);
       setResultado(data);
     } catch (err) {
-      alert("Error al conectar con el servidor: " + err);
+      setResultado(null);
+      setError(err.message);
     } finally {
       setCargando(false);
     }
   };
 
+  const manejarEnvio = (fraseAProbar = frase) => {
+    enviarPeticion(fraseAProbar, false);
+  };
+
+  const manejarSoloGramatica = () => {
+    enviarPeticion("", true);
+  };
+
   useEffect(() => {
-    manejarEnvio(fraseParam);
-  }, []);
+    const controller = new AbortController();
+    analizar(DEFAULT_GRAMMAR, configInicial.frase, false, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setResultado(data);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) setError(err.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCargando(false);
+      });
+    return () => controller.abort();
+  }, [configInicial]);
+
+  const esModoSolo = resultado && resultado.modo === "solo_gramatica";
 
   return (
     <div className="contenedor">
       {/* Header estilo Proyecto 1 */}
       <header className="hero">
         <div className="hero-kicker">Proyecto 2 &bull; Teoría de la Computación</div>
-        <h1>Algoritmo CYK & Parse Tree</h1>
+        <h1>Algoritmo CYK &amp; Parse Tree</h1>
         <p>
           Simplificación de gramáticas CFG a Forma Normal de Chomsky (CNF), verificación sintáctica con programación dinámica y reconstrucción visual del árbol de derivación.
         </p>
@@ -82,6 +119,7 @@ export default function App() {
           <button
             type="button"
             className="chip"
+            disabled={cargando}
             onClick={() => setGramatica(DEFAULT_GRAMMAR)}
           >
             Restaurar gramática inglés
@@ -93,6 +131,7 @@ export default function App() {
           <textarea
             rows={7}
             value={gramatica}
+            disabled={cargando}
             onChange={(e) => setGramatica(e.target.value)}
           />
         </label>
@@ -102,6 +141,7 @@ export default function App() {
           <input
             type="text"
             value={frase}
+            disabled={cargando}
             onChange={(e) => setFrase(e.target.value)}
             placeholder="Ej: She eats a cake with a fork"
           />
@@ -116,6 +156,7 @@ export default function App() {
               <button
                 type="button"
                 key={idx}
+                disabled={cargando}
                 className={`chip ${item.esperado ? "" : "chip-rechazada"}`}
                 onClick={() => {
                   setFrase(item.texto);
@@ -128,7 +169,16 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>
+          <button
+            type="button"
+            className="chip"
+            disabled={cargando}
+            onClick={manejarSoloGramatica}
+            title="Verifica si está en CNF y la convierte solo si hace falta, sin ejecutar CYK"
+          >
+            Solo analizar gramática
+          </button>
           <button type="submit" className="boton-principal" disabled={cargando}>
             {cargando ? (
               <span className="estado-carga" style={{ margin: 0 }}>
@@ -141,41 +191,62 @@ export default function App() {
         </div>
       </form>
 
-      {/* Badges de Resultado */}
+      {error && <div className="error" role="alert">{error}</div>}
+
+      {/* Resultado */}
       {resultado && (
         <div className="resultados">
           <div className="seccion-heading">
             <div>
-              <span className="eyebrow">Veredicto de Pertenencia</span>
-              <h2>Resultado del Análisis CYK</h2>
+              <span className="eyebrow">{esModoSolo ? "Análisis de Gramática" : "Veredicto de Pertenencia"}</span>
+              <h2>{esModoSolo ? "Resultado del Análisis de CNF" : "Resultado del Análisis CYK"}</h2>
             </div>
-            <div style={{ fontFamily: "var(--mono)", fontSize: "14px", color: "var(--text)" }}>
-              Frase: <span style={{ color: "var(--accent)" }}>{resultado.palabras.join(" ")}</span>
-            </div>
+            {!esModoSolo && (
+              <div style={{ fontFamily: "var(--mono)", fontSize: "14px", color: "var(--text)" }}>
+                Frase: <span style={{ color: "var(--accent)" }}>{resultado.palabras.join(" ") || "ε (cadena vacía)"}</span>
+              </div>
+            )}
           </div>
 
+          {/* Badges */}
           <div className="badges">
-            <div className={`badge ${resultado.pertenece ? "badge-si" : "badge-no"}`}>
-              <span className="badge-nombre">¿Pertenece al Lenguaje?</span>
-              <span className="badge-valor">{resultado.pertenece ? "SÍ" : "NO"}</span>
+            {/* Badge ¿Es CNF original? — siempre visible */}
+            <div className={`badge ${resultado.es_cnf_original ? "badge-si" : "badge-no"}`}>
+              <span className="badge-nombre">¿La gramática ya era CNF?</span>
+              <span className="badge-valor">{resultado.es_cnf_original ? "SÍ" : "NO"}</span>
             </div>
 
-            <div className="badge badge-info">
-              <span className="badge-nombre">Tiempo de Cómputo</span>
-              <span className="badge-valor" style={{ fontSize: "20px" }}>
-                {resultado.tiempo_ms.toFixed(4)} ms
-              </span>
-            </div>
+            {!esModoSolo && (
+              <>
+                <div className={`badge ${resultado.pertenece ? "badge-si" : "badge-no"}`}>
+                  <span className="badge-nombre">¿Pertenece al Lenguaje?</span>
+                  <span className="badge-valor">{resultado.pertenece ? "SÍ" : "NO"}</span>
+                </div>
 
-            <div className="badge badge-info">
-              <span className="badge-nombre">Tokens Evaluados</span>
-              <span className="badge-valor" style={{ fontSize: "20px" }}>
-                {resultado.palabras.length} palabras
-              </span>
-            </div>
+                <div className="badge badge-info">
+                  <span className="badge-nombre">Tiempo de Cómputo</span>
+                  <span className="badge-valor" style={{ fontSize: "20px" }}>
+                    {resultado.tiempo_ms.toFixed(4)} ms
+                  </span>
+                </div>
+
+                <div className="badge badge-info">
+                  <span className="badge-nombre">Tokens Evaluados</span>
+                  <span className="badge-valor" style={{ fontSize: "20px" }}>
+                    {resultado.palabras.length} palabras
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
-          {resultado.desconocidas && resultado.desconocidas.length > 0 && (
+          <p>
+            {resultado.es_cnf_original
+              ? "La gramática ya está en CNF: se utiliza sin convertir."
+              : "La gramática no estaba en CNF: se convirtió a CNF."}
+          </p>
+
+          {!esModoSolo && resultado.desconocidas && resultado.desconocidas.length > 0 && (
             <div className="error" style={{ marginBottom: "20px" }}>
               <strong>Palabras no presentes en el vocabulario: </strong>
               {resultado.desconocidas.join(", ")}
@@ -207,103 +278,110 @@ export default function App() {
             )}
           </div>
 
-          {/* Pestañas de Visualización */}
-          <div className="seccion-card">
-            <div className="pestañas">
-              <button
-                type="button"
-                className={`pestaña-btn ${tab === "tree" ? "activa" : ""}`}
-                onClick={() => setTab("tree")}
-              >
-                Árbol Sintáctico (Parse Tree)
-              </button>
-              <button
-                type="button"
-                className={`pestaña-btn ${tab === "matrix" ? "activa" : ""}`}
-                onClick={() => setTab("matrix")}
-              >
-                Tabla Dinámica CYK (T[i][j])
-              </button>
-            </div>
+          {/* Pestañas de Visualización — solo en modo CYK */}
+          {!esModoSolo && (
+            <>
+              <div className="seccion-card">
+                <div className="pestañas">
+                  <button
+                    type="button"
+                    className={`pestaña-btn ${tab === "tree" ? "activa" : ""}`}
+                    onClick={() => setTab("tree")}
+                  >
+                    Árbol Sintáctico (Parse Tree)
+                  </button>
+                  <button
+                    type="button"
+                    className={`pestaña-btn ${tab === "matrix" ? "activa" : ""}`}
+                    onClick={() => setTab("matrix")}
+                  >
+                    Tabla Dinámica CYK (T[i][j])
+                  </button>
+                </div>
 
-            {tab === "tree" ? (
-              resultado.pertenece && resultado.arbol ? (
-                <div>
-                  <ParseTree data={resultado.arbol} />
-                  <div style={{ marginTop: "14px" }}>
-                    <span className="eyebrow" style={{ display: "block", marginBottom: "4px" }}>
-                      Notación entre Corchetes
-                    </span>
-                    <pre className="consola" style={{ padding: "10px 14px", margin: 0 }}>
-                      {resultado.parentesis}
-                    </pre>
+                {tab === "tree" ? (
+                  resultado.pertenece && resultado.arbol ? (
+                    <div>
+                      <ParseTree data={resultado.arbol} />
+                      <div style={{ marginTop: "14px" }}>
+                        <span className="eyebrow" style={{ display: "block", marginBottom: "4px" }}>
+                          Notación entre Corchetes
+                        </span>
+                        <pre className="consola" style={{ padding: "10px 14px", margin: 0 }}>
+                          {resultado.parentesis}
+                        </pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        padding: "48px 20px",
+                        textAlign: "center",
+                        color: "var(--text)",
+                        background: "var(--bg)",
+                        borderRadius: "8px",
+                        border: "1px dashed var(--border)"
+                      }}
+                    >
+                      <p style={{ fontWeight: 600, color: "var(--text-h)", marginBottom: "6px" }}>
+                        La frase fue rechazada por la gramática.
+                      </p>
+                      <p style={{ fontSize: "14px", margin: 0 }}>
+                        El árbol de derivación solo puede reconstruirse cuando la frase pertenece al lenguaje.
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <DynamicTable
+                    palabras={resultado.palabras}
+                    matriz={resultado.matriz}
+                  />
+                )}
+              </div>
+
+              {/* Sección Detalle de Tiempos requerida por el PDF */}
+              <div className="seccion-card">
+                <div className="seccion-heading" style={{ marginBottom: "12px" }}>
+                  <div>
+                    <span className="eyebrow">Especificación b.ii del PDF</span>
+                    <h2>Medición del Tiempo de Ejecución</h2>
                   </div>
                 </div>
-              ) : (
-                <div
-                  style={{
-                    padding: "48px 20px",
-                    textAlign: "center",
-                    color: "var(--text)",
-                    background: "var(--bg)",
-                    borderRadius: "8px",
-                    border: "1px dashed var(--border)"
-                  }}
-                >
-                  <p style={{ fontWeight: 600, color: "var(--text-h)", marginBottom: "6px" }}>
-                    La frase fue rechazada por la gramática.
-                  </p>
-                  <p style={{ fontSize: "14px", margin: 0 }}>
-                    El árbol de derivación solo puede reconstruirse cuando la frase pertenece al lenguaje.
-                  </p>
+                <p style={{ fontSize: "14px", color: "var(--text)", marginBottom: "16px" }}>
+                  El enunciado exige indicar formalmente el tiempo que se tarda el algoritmo CYK en realizar la validación sintáctica.
+                </p>
+                <div className="badges" style={{ marginBottom: 0 }}>
+                  <div className="badge badge-info">
+                    <span className="badge-nombre">Tiempo en Milisegundos</span>
+                    <span className="badge-valor" style={{ color: "#c875ff", fontSize: "22px" }}>
+                      {resultado.tiempo_ms.toFixed(4)} ms
+                    </span>
+                  </div>
+                  <div className="badge badge-info">
+                    <span className="badge-nombre">Tiempo en Segundos</span>
+                    <span className="badge-valor" style={{ color: "#c875ff", fontSize: "22px" }}>
+                      {resultado.tiempo_segundos ? resultado.tiempo_segundos.toFixed(6) : (resultado.tiempo_ms / 1000).toFixed(6)} s
+                    </span>
+                  </div>
+                  <div className="badge badge-info">
+                    <span className="badge-nombre">Complejidad Teórica</span>
+                    <span className="badge-valor" style={{ color: "#91e4ac", fontSize: "22px" }}>
+                      O(n³)
+                    </span>
+                  </div>
                 </div>
-              )
-            ) : (
-              <DynamicTable
-                palabras={resultado.palabras}
-                matriz={resultado.matriz}
-              />
-            )}
-          </div>
+                <p style={{ fontSize: "12px", marginTop: "12px" }}>
+                  Para una gramática fija; n es la cantidad de palabras de la frase.
+                </p>
+              </div>
+            </>
+          )}
 
-          {/* Sección Detalle de Tiempos requerida por el PDF */}
-          <div className="seccion-card">
-            <div className="seccion-heading" style={{ marginBottom: "12px" }}>
-              <div>
-                <span className="eyebrow">Especificación b.ii del PDF</span>
-                <h2>Medición del Tiempo de Ejecución</h2>
-              </div>
-            </div>
-            <p style={{ fontSize: "14px", color: "var(--text)", marginBottom: "16px" }}>
-              El enunciado exige indicar formalmente el tiempo que se tarda el algoritmo CYK en realizar la validación sintáctica.
-            </p>
-            <div className="badges" style={{ marginBottom: 0 }}>
-              <div className="badge badge-info">
-                <span className="badge-nombre">Tiempo en Milisegundos</span>
-                <span className="badge-valor" style={{ color: "#c875ff", fontSize: "22px" }}>
-                  {resultado.tiempo_ms.toFixed(4)} ms
-                </span>
-              </div>
-              <div className="badge badge-info">
-                <span className="badge-nombre">Tiempo en Segundos</span>
-                <span className="badge-valor" style={{ color: "#c875ff", fontSize: "22px" }}>
-                  {resultado.tiempo_segundos ? resultado.tiempo_segundos.toFixed(6) : (resultado.tiempo_ms / 1000).toFixed(6)} s
-                </span>
-              </div>
-              <div className="badge badge-info">
-                <span className="badge-nombre">Complejidad Teórica</span>
-                <span className="badge-valor" style={{ color: "#91e4ac", fontSize: "22px" }}>
-                  O(n³ &middot; |G|)
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Consola Terminal hasta abajo */}
+          {/* Consola Terminal */}
           <div className="consola-wrapper" style={{ marginTop: "24px" }}>
             <div className="seccion-heading" style={{ marginBottom: "12px" }}>
               <div>
-                <span className="eyebrow">Terminal & Salida CLI</span>
+                <span className="eyebrow">Terminal &amp; Salida CLI</span>
                 <h2>Salida de Consola del Programa</h2>
               </div>
             </div>
@@ -316,5 +394,3 @@ export default function App() {
     </div>
   );
 }
-
-

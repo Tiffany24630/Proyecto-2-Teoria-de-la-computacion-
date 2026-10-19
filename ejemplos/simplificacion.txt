@@ -1,0 +1,9 @@
+# Incluye epsilon, producciones unitarias, simbolos inutiles y reglas largas.
+S -> A B C | U
+A -> a | e
+B -> b
+C -> c
+U -> V
+V -> d
+X -> x
+Y -> Y

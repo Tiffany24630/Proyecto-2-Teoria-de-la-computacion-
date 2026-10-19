@@ -1,7 +1,7 @@
 from __future__ import annotations
 from tipos_gramatica import Gramatica
 
-_MARCADORES_EPSILON = {"e", "ε", "epsilon", "lambda", "λ", "∅"}
+_MARCADORES_EPSILON = {"e", "ε", "epsilon", "lambda", "λ"}
 
 #Convierte texto con reglas de producción en una gramática.
 def leer_gramatica(texto: str) -> tuple[Gramatica, str]:
@@ -30,6 +30,8 @@ def leer_gramatica(texto: str) -> tuple[Gramatica, str]:
         reglas.setdefault(izquierda, [])
 
         for alternativa in derecha.split("|"):
+            if alternativa.strip() == "∅":
+                continue
             tokens = tuple(alternativa.strip().split())
 
             if len(tokens) == 1 and tokens[0].lower() in _MARCADORES_EPSILON:
@@ -44,11 +46,17 @@ def leer_gramatica(texto: str) -> tuple[Gramatica, str]:
     return reglas, next(iter(reglas))
 
 #Formatea la gramática usando e para la producción vacía.
-def formatear_gramatica(gramatica: Gramatica) -> str:
+def formatear_gramatica(gramatica: Gramatica, simbolo_inicial: str | None = None) -> str:
     lineas = []
-
-    for nt, producciones in gramatica.items():
+    orden = list(gramatica)
+    if simbolo_inicial is not None:
+        if simbolo_inicial not in gramatica:
+            raise ValueError("El símbolo inicial no existe en la gramática.")
+        orden.remove(simbolo_inicial)
+        orden.insert(0, simbolo_inicial)
+    for nt in orden:
+        producciones = gramatica[nt]
         alternativas = [" ".join(p) if p else "ε" for p in producciones]
-        lineas.append(f"{nt} -> {' | '.join(alternativas)}")
+        lineas.append(f"{nt} -> {' | '.join(alternativas) if alternativas else '∅'}")
 
     return "\n".join(lineas)
