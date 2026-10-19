@@ -5,7 +5,16 @@
 - Python 3.10 o superior.
 - No requiere bibliotecas externas.
 
-## Ejecución y pruebas de CYK
+## Ejecución del Frontend Interactivo (Web UI)
+
+Para levantar la interfaz gráfica con visualizador interactivo del **Árbol Sintáctico (Parse Tree)** y la **Tabla de Programación Dinámica CYK**:
+
+```bash
+python app.py
+```
+Luego abre tu navegador en `http://localhost:8080`.
+
+## Ejecución por Línea de Comandos (CLI)
 
 Ejecuta los comandos desde la carpeta raíz del proyecto. Las gramáticas de prueba están en `ejemplos/`.
 
@@ -14,19 +23,24 @@ python main.py ejemplos/ingles.txt -f "She eats a cake with a fork"
 python main.py ejemplos/1.txt -f "( id + id ) * id"
 ```
 
+El programa mostrará:
+1. La gramática convertida a CNF y su verificación.
+2. La decisión de aceptación: **SÍ** o **NO**.
+3. El **tiempo exacto de validación** (en milisegundos y segundos).
+4. El **Parse Tree (árbol de derivación)** en representación jerárquica y en notación de corchetes.
+
 Si omites `-f` (o `--frase`), el programa solicita la frase por teclado:
 
 ```bash
 python main.py ejemplos/ingles.txt
 ```
 
-Para convertir una gramática y guardar el resultado en CNF, usa `-o` (o `--salida`). También puedes combinarlo con la prueba de una frase:
+Para convertir una gramática y guardar el resultado en CNF, usa `-o` (o `--salida`):
 
 ```bash
 python main.py ejemplos/1.txt -o salida-cnf.txt -f "id + id"
 ```
 
-`-o` guarda la gramática convertida; la aceptación de la frase se calcula por separado con CYK. Si no se proporciona `-f`, la frase se lee con `input()`. Por ejemplo, al ingresarla en la solicitud interactiva, los caracteres como `*` no son interpretados por la terminal.
 
 ## Qué hace el programa
 
