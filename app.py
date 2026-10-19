@@ -5,7 +5,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 from gramatica_cnf import convertir_a_cnf, es_cnf, formatear_gramatica, leer_gramatica
-from cyk import cyk, construir_arbol, arbol_a_parentesis
+from cyk import cyk, construir_arbol, arbol_a_parentesis, formatear_arbol_texto
 
 BASE_DIR = Path(__file__).parent
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
@@ -41,13 +41,15 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
 
                 desconocidas = [w for w in palabras if w not in terminales]
 
+                n = len(palabras)
                 arbol = None
                 parentesis = ""
+                arbol_texto = ""
                 if pertenece and len(palabras) > 0:
                     arbol = construir_arbol(tabla, nuevo_inicial, 0, len(palabras) - 1)
                     parentesis = arbol_a_parentesis(arbol)
+                    arbol_texto = formatear_arbol_texto(arbol).strip()
 
-                n = len(palabras)
                 matriz = []
                 for i in range(n):
                     fila = []
@@ -58,17 +60,39 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
                             fila.append([])
                     matriz.append(fila)
 
+                # Generar reporte de consola simulada tal como sale en terminal
+                lineas_consola = []
+                lineas_consola.append("=== Gramática en CNF ===")
+                lineas_consola.append(cnf_str)
+                lineas_consola.append(f"\n¿Es CNF?: {'SÍ' if cumple_cnf else 'NO'}")
+                lineas_consola.append("\n=== Resultado CYK ===")
+                lineas_consola.append(f"Frase: {' '.join(palabras)}")
+                lineas_consola.append(f"¿Pertenece al lenguaje?: {'SÍ' if pertenece else 'NO'}")
+                lineas_consola.append(f"Tiempo de validación: {tiempo_ms:.4f} ms ({(t1 - t0):.6f} segundos)")
+                if desconocidas:
+                    lineas_consola.append(f"Palabras fuera de la gramática: {', '.join(desconocidas)}")
+                if pertenece and arbol_texto:
+                    lineas_consola.append("\n=== Parse Tree (Árbol de Derivación) ===")
+                    lineas_consola.append(arbol_texto)
+                    lineas_consola.append(f"\nNotación jerárquica: {parentesis}")
+
+                consola_output = "\n".join(lineas_consola)
+
                 respuesta = {
                     "pertenece": pertenece,
                     "tiempo_ms": tiempo_ms,
+                    "tiempo_segundos": t1 - t0,
                     "palabras": palabras,
                     "desconocidas": desconocidas,
                     "cnf_texto": cnf_str,
                     "cumple_cnf": cumple_cnf,
                     "arbol": arbol,
+                    "arbol_texto": arbol_texto,
                     "parentesis": parentesis,
                     "matriz": matriz,
+                    "consola": consola_output
                 }
+
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -88,12 +112,13 @@ def run(port=5000):
     server_address = ("0.0.0.0", port)
     httpd = HTTPServer(server_address, UnifiedHandler)
     url = f"http://localhost:{port}"
-    print(f"\n🚀 Servidor CYK (Backend + React Frontend) iniciado en: {url}")
+    print(f"\n[OK] Servidor CYK (Backend + React Frontend) iniciado en: {url}")
     print("Presiona Ctrl + C para detener.")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nServidor detenido.")
+
 
 if __name__ == "__main__":
     import os

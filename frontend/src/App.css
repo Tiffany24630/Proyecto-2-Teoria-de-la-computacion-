@@ -11,6 +11,15 @@
   margin-bottom: 28px;
 }
 
+.hero h1 {
+  font-size: 56px !important;
+  font-weight: 800 !important;
+  line-height: 1.05 !important;
+  letter-spacing: -1.5px !important;
+  margin: 12px 0 16px !important;
+  color: var(--text-h) !important;
+}
+
 .hero-kicker, .eyebrow {
   color: var(--accent);
   font-family: var(--mono);
@@ -25,6 +34,7 @@
   font-size: 18px;
   max-width: 750px;
 }
+
 
 .formulario {
   display: flex;

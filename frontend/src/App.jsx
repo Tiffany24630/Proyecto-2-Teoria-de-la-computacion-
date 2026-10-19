@@ -265,8 +265,56 @@ export default function App() {
               />
             )}
           </div>
+
+          {/* Sección Detalle de Tiempos requerida por el PDF */}
+          <div className="seccion-card">
+            <div className="seccion-heading" style={{ marginBottom: "12px" }}>
+              <div>
+                <span className="eyebrow">Especificación b.ii del PDF</span>
+                <h2>Medición del Tiempo de Ejecución</h2>
+              </div>
+            </div>
+            <p style={{ fontSize: "14px", color: "var(--text)", marginBottom: "16px" }}>
+              El enunciado exige indicar formalmente el tiempo que se tarda el algoritmo CYK en realizar la validación sintáctica.
+            </p>
+            <div className="badges" style={{ marginBottom: 0 }}>
+              <div className="badge badge-info">
+                <span className="badge-nombre">Tiempo en Milisegundos</span>
+                <span className="badge-valor" style={{ color: "#c875ff", fontSize: "22px" }}>
+                  {resultado.tiempo_ms.toFixed(4)} ms
+                </span>
+              </div>
+              <div className="badge badge-info">
+                <span className="badge-nombre">Tiempo en Segundos</span>
+                <span className="badge-valor" style={{ color: "#c875ff", fontSize: "22px" }}>
+                  {resultado.tiempo_segundos ? resultado.tiempo_segundos.toFixed(6) : (resultado.tiempo_ms / 1000).toFixed(6)} s
+                </span>
+              </div>
+              <div className="badge badge-info">
+                <span className="badge-nombre">Complejidad Teórica</span>
+                <span className="badge-valor" style={{ color: "#91e4ac", fontSize: "22px" }}>
+                  O(n³ &middot; |G|)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Consola Terminal hasta abajo */}
+          <div className="consola-wrapper" style={{ marginTop: "24px" }}>
+            <div className="seccion-heading" style={{ marginBottom: "12px" }}>
+              <div>
+                <span className="eyebrow">Terminal & Salida CLI</span>
+                <h2>Salida de Consola del Programa</h2>
+              </div>
+            </div>
+            <pre className="consola">
+              {resultado.consola}
+            </pre>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
+

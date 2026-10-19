@@ -52,14 +52,19 @@ h2 {
 }
 
 h1 {
-  font-size: clamp(2.4rem, 5.5vw, 4.5rem);
-  line-height: 1;
-  letter-spacing: -1.5px;
-  margin: 14px 0 18px;
+  font-size: clamp(3rem, 7vw, 5.5rem);
+  line-height: 0.98;
+  letter-spacing: -2px;
+  margin: 16px 0 20px;
+  background: linear-gradient(135deg, #f7f2ff 30%, #c875ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   @media (max-width: 1024px) {
-    margin: 10px 0 14px;
+    margin: 12px 0 16px;
+    font-size: 2.8rem;
   }
 }
+
 
 h2 {
   font-size: 24px;
