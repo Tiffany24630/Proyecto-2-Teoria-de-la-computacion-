@@ -1,7 +1,8 @@
 import argparse
+import time
 from pathlib import Path
 from gramatica_cnf import convertir_a_cnf, es_cnf, formatear_gramatica, leer_gramatica
-from cyk import cyk
+from cyk import cyk, construir_arbol, formatear_arbol_texto, arbol_a_parentesis
 
 parser = argparse.ArgumentParser(
     description="Convierte una gramática CFG a CNF y valida una frase con el algoritmo CYK."
@@ -55,14 +56,27 @@ terminales = {p[0] for ps in gramatica_cnf.values() for p in ps if len(p) == 1}
 # Se respeta la palabra tal cual; si no existe, se prueba en minúsculas ("She" -> "she")
 palabras = [w if w in terminales else w.lower() for w in frase.split()]
 
+# Medición de tiempo del algoritmo CYK
+inicio_tiempo = time.perf_counter()
 acepta, tabla = cyk(gramatica_cnf, nuevo_inicial, palabras)
+fin_tiempo = time.perf_counter()
+tiempo_total_ms = (fin_tiempo - inicio_tiempo) * 1000
 
 desconocidas = [w for w in palabras if w not in terminales]
 
 print("\n=== Resultado CYK ===")
 print(f"Frase: {' '.join(palabras)}")
 print(f"¿Pertenece al lenguaje?: {'SÍ' if acepta else 'NO'}")
+print(f"Tiempo de validación: {tiempo_total_ms:.4f} ms ({fin_tiempo - inicio_tiempo:.6f} segundos)")
 
 if desconocidas:
     print(f"Palabras que no están en la gramática: {', '.join(desconocidas)}")
+
+if acepta:
+    n = len(palabras)
+    arbol = construir_arbol(tabla, nuevo_inicial, 0, n - 1)
+    print("\n=== Parse Tree (Árbol de Derivación) ===")
+    print(formatear_arbol_texto(arbol).strip())
+    print(f"\nNotación jerárquica: {arbol_a_parentesis(arbol)}")
+
 

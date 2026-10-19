@@ -62,3 +62,73 @@ def cyk(gramatica: Gramatica, inicial: str, palabras: list[str]) -> tuple[bool, 
     # 4. Aceptación
     return inicial in T[0][n - 1], T
 
+
+def construir_arbol(T: Tabla, no_terminal: str, i: int, j: int) -> dict:
+    """
+    Reconstruye el árbol de derivación (Parse Tree) de manera recursiva
+    siguiendo los back-pointers de la tabla CYK.
+    Retorna un diccionario representativo del nodo:
+    {"simbolo": str, "hijos": list}
+    """
+    if i >= len(T) or j >= len(T) or no_terminal not in T[i][j]:
+        return {"simbolo": no_terminal, "hijos": []}
+
+    info = T[i][j][no_terminal]
+    tipo = info[0]
+
+    if tipo == "term":
+        # Hoja terminal
+        palabra = info[1]
+        return {
+            "simbolo": no_terminal,
+            "hijos": [{"simbolo": palabra, "hijos": []}]
+        }
+    elif tipo == "bin":
+        # Producción binaria: ("bin", k, B, C)
+        _, k, B, C = info
+        hijo_izq = construir_arbol(T, B, i, k)
+        hijo_der = construir_arbol(T, C, k + 1, j)
+        return {
+            "simbolo": no_terminal,
+            "hijos": [hijo_izq, hijo_der]
+        }
+    return {"simbolo": no_terminal, "hijos": []}
+
+
+def formatear_arbol_texto(nodo: dict, prefijo: str = "", es_ultimo: bool = True, es_raiz: bool = True) -> str:
+    """
+    Genera una representación en forma de árbol ASCII / Unicode jerárquico.
+    """
+    simbolo = nodo.get("simbolo", "")
+    hijos = nodo.get("hijos", [])
+
+    if es_raiz:
+        linea = f"{simbolo}\n"
+        nuevo_prefijo = ""
+    else:
+        conector = "\\-- " if es_ultimo else "+-- "
+        linea = f"{prefijo}{conector}{simbolo}\n"
+        nuevo_prefijo = prefijo + ("    " if es_ultimo else "|   ")
+
+    for idx, hijo in enumerate(hijos):
+        ultimo = (idx == len(hijos) - 1)
+        linea += formatear_arbol_texto(hijo, nuevo_prefijo, ultimo, es_raiz=False)
+
+    return linea
+
+
+
+
+def arbol_a_parentesis(nodo: dict) -> str:
+    """
+    Convierte el árbol a notación de corchetes/paréntesis anidados.
+    Ej: [S0 [NP [Det the] [N cat]] [VP [V drinks] [NP [Det the] [N beer]]]]
+    """
+    simbolo = nodo.get("simbolo", "")
+    hijos = nodo.get("hijos", [])
+    if not hijos:
+        return str(simbolo)
+    hijos_str = " ".join(arbol_a_parentesis(h) for h in hijos)
+    return f"[{simbolo} {hijos_str}]"
+
+
