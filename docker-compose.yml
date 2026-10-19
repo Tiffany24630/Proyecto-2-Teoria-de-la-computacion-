@@ -1,0 +1,9 @@
+services:
+  cyk-app:
+    build: .
+    container_name: cyk-parser-app
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    environment:
+      - PORT=5000

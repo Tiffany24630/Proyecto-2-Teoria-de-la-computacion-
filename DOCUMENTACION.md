@@ -32,22 +32,68 @@ Para la realización del proyecto se dividieron las responsabilidades en 3 área
   5. **Paso recursivo (largos $2 \dots n$):** Evaluación de todos los cortes posibles $k \in [i, j-1]$, realizando el producto cartesiano entre subcadenas y emparejamiento con reglas binarias.
   6. **Decisión de aceptación:** Comprobación del símbolo inicial $S_0$ en la celda superior $T[0][n-1]$.
 
-### Integrante 3: Integración, Árbol Sintáctico, Frontend y Documentación (1 Punto + Integración)
-* **Responsabilidad Principal:** Completar las funcionalidades de salida exigidas, unificar las ramas de desarrollo, construir el frontend y estructurar la documentación técnica.
-* **Módulos asignados:** `cyk.py` (parse tree), `main.py` (CLI y cronometraje), `app.py` (Frontend interactivo Web con D3.js) y `DOCUMENTACION.md`.
+### Integrante 3: Integración, Árbol Sintáctico, Frontend React y Documentación (1 Punto + Integración)
+* **Responsabilidad Principal:** Completar las funcionalidades de salida exigidas, unificar las ramas de desarrollo, construir el frontend en React con D3.js, containerizar con Docker y estructurar la documentación técnica.
+* **Módulos asignados:** `cyk.py` (parse tree), `main.py` (CLI), `frontend/` (React + Tailwind + D3.js), `Dockerfile`, `docker-compose.yml`, `app.py` y `DOCUMENTACION.md`.
 * **Tareas realizadas:**
   1. **Almacenamiento de antecedentes (*back-pointers*):** Registro estructurado de la procedencia de cada derivación (`("term", w)` y `("bin", k, B, C)`).
   2. **Reconstrucción del Parse Tree:** Implementación del recorrido recursivo `construir_arbol` y generador de árbol jerárquico (`formatear_arbol_texto` y `arbol_a_parentesis`).
   3. **Medición de tiempos:** Inclusión de `time.perf_counter()` en milisegundos y segundos exactos.
   4. **Salida estricta SÍ / NO:** Validación conforme a especificación.
-  5. **Desarrollo del Frontend:** Interfaz web moderna con Tailwind CSS y D3.js que grafica el árbol sintáctico y la tabla dinámica $T[i][j]$ sin requerir librerías externas de Python.
-  6. **Documentación del proyecto:** Redacción técnica completa, diseño de software, análisis pedagógico paso a paso y recopilación de obstáculos.
+  5. **Frontend Moderno en React con D3.js:** Creación de una SPA reactiva con zoom interactivo, navegación por pestañas y visualización de la tabla dinámica de programación dinámica.
+  6. **Containerización Docker:** Despliegue en un solo comando mediante `docker compose up --build`.
+  7. **Documentación del proyecto:** Redacción técnica completa, diseño de software, análisis pedagógico paso a paso y recopilación de evidencias con screenshots.
 
 ---
 
-## 2. Fundamento Teórico y Funcionamiento del Algoritmo CYK
+## 2. Diseño de la Aplicación
 
-### 2.1 ¿Qué problema resuelve el algoritmo CYK?
+### 2.1 Diagrama de Arquitectura del Sistema
+El sistema implementa una arquitectura modular desacoplada entre el motor formal y la capa visual:
+
+```
+┌────────────────────────────────────────────────────────┐
+│               CAPA DE ENTRADA Y PARSING                 │
+│  • parser_gramatica.py (Lee reglas CFG)                 │
+│  • tipos_gramatica.py / utils_gramatica.py             │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│             CAPA DE SIMPLIFICACIÓN A CNF               │
+│  • simplificacion_gramatica.py                         │
+│    - eliminar_epsilon()                                │
+│    - eliminar_unitarias()                              │
+│    - eliminar_inutiles()                               │
+│  • cnf.py (Binarización y normalización CNF)           │
+└──────────────────────────┬─────────────────────────────┘
+                           │  Gramática en CNF + Símbolo S0
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│             MOTOR DE INFERENCIA CYK & TREE             │
+│  • cyk.py                                              │
+│    - indexar_gramatica() [O(1) unarias / binarias]     │
+│    - cyk() [Tabla DP T[i][j] con back-pointers]        │
+│    - construir_arbol() [Recorrido recursivo del árbol] │
+│    - arbol_a_parentesis() / formatear_arbol_texto()    │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+             ┌─────────────┴─────────────┐
+             ▼                           ▼
+┌─────────────────────────┐ ┌─────────────────────────┐
+│     LÍNEA DE COMANDOS   │ │     FRONTEND REACT      │
+│        (main.py)        │ │    (SPA con D3.js)      │
+│  • SÍ / NO              │ │  • Árbol SVG interactivo│
+│  • Tiempo en ms         │ │  • Matriz triangular DP │
+│  • Árbol ASCII          │ │  • Docker Compose       │
+└─────────────────────────┘ └─────────────────────────┘
+```
+
+---
+
+## 3. Fundamento Teórico y Funcionamiento del Algoritmo CYK
+
+### 3.1 ¿Qué problema resuelve el algoritmo CYK?
 Dada una gramática libre de contexto en Forma Normal de Chomsky (CNF) y una frase $w$ compuesta por $n$ palabras ($w = w_0\, w_1 \dots w_{n-1}$), el algoritmo responde: **¿puede la gramática generar esta frase?**
 
 Para resolverlo, utiliza **programación dinámica**:
@@ -56,16 +102,16 @@ Para resolverlo, utiliza **programación dinámica**:
 3. Con dichas soluciones, construye problemas progresivamente mayores (subcadenas de 2 palabras, luego 3, ..., hasta las $n$ palabras de la frase completa).
 4. **Principio fundamental:** Nunca se resuelve dos veces el mismo segmento de texto.
 
-### 2.2 ¿Por qué se exige la Forma Normal de Chomsky (CNF)?
+### 3.2 ¿Por qué se exige la Forma Normal de Chomsky (CNF)?
 En CNF, cualquier derivación de una subcadena de 2 o más palabras proviene **estrictamente** de una regla de la forma:
 $$A \to B\,C$$
 Esto garantiza que cualquier segmento sintáctico de tamaño $L \ge 2$ se compone de la concatenación exacta de **dos pedazos no vacíos**. Gracias a esto, el algoritmo solo necesita evaluar particiones binarias (un único punto de corte $k$).
 
 ---
 
-## 3. Ejemplo Teórico Paso a Paso
+## 4. Ejemplo Teórico Paso a Paso
 
-### 3.1 Gramática de Ejemplo y Frase
+### 4.1 Gramática de Ejemplo y Frase
 Sea la gramática formal:
 $$\begin{aligned}
 S &\to A\,B \mid B\,C \\
@@ -83,7 +129,7 @@ $$w = b\ a\ a\ b\ a \quad (n = 5 \text{ palabras})$$
 
 ---
 
-### 3.2 La Tabla de Programación Dinámica (La Escalera Triangular)
+### 4.2 La Tabla de Programación Dinámica (La Escalera Triangular)
 Cada celda $[i, j]$ representa la subcadena que comienza en la palabra $i$ y termina en la palabra $j$.
 
 ```text
@@ -101,7 +147,7 @@ largo 1 │ [0,0]  [1,1]  [2,2]  [3,3]  [4,4]
 
 ---
 
-### 3.3 Concepto de Corte ($k$)
+### 4.3 Concepto de Corte ($k$)
 Para analizar una subcadena $[i, j]$ de longitud $L \ge 2$, se deben probar todas las formas posibles de partirla en dos fragmentos contiguos no vacíos:
 * **Fragmento izquierdo:** $[i, k]$
 * **Fragmento derecho:** $[k+1, j]$
@@ -114,29 +160,11 @@ Una subcadena de longitud $L$ tiene exactamente $L - 1$ cortes posibles.
 2. $k = 2$: Izquierda $[1, 2] = «a\ a»$ | Derecha $[3, 4] = «b\ a»$
 3. $k = 3$: Izquierda $[1, 3] = «a\ a\ b»$ | Derecha $[4, 4] = «a»$
 
-En la estructura piramidal, para evaluar una celda $[i, j]$, el pedazo izquierdo **desciende verticalmente por la columna $i$**, mientras que el pedazo derecho **desciende en diagonal hacia la derecha**: dos trayectorias que convergen.
-
 ---
 
-### 3.4 Pre-indexación de la Gramática
-Para lograr una complejidad eficiente, se crean dos tablas hash inversas:
-* **Índice Unario:** $\text{terminal} \to \{A \mid A \to \text{terminal}\}$
-  * $a \to \{A, C\}$
-  * $b \to \{B\}$
-* **Índice Binario:** $(B, C) \to \{A \mid A \to B\,C\}$
-  * $(A, B) \to \{S, C\}$
-  * $(B, C) \to \{S\}$
-  * $(B, A) \to \{A\}$
-  * $(C, C) \to \{B\}$
-
-Esto sustituye la iteración exhaustiva sobre todas las reglas en cada celda por una consulta $O(1)$.
-
----
-
-### 3.5 Ejecución Paso a Paso sobre «baaba»
+### 4.4 Ejecución Paso a Paso sobre «baaba»
 
 #### Paso 1: Largo 1 (Inicialización)
-Se consulta directamente el índice unario para cada palabra:
 * $[0, 0]$ (`b`) $\implies \{B\}$
 * $[1, 1]$ (`a`) $\implies \{A, C\}$
 * $[2, 2]$ (`a`) $\implies \{A, C\}$
@@ -150,39 +178,26 @@ Se consulta directamente el índice unario para cada palabra:
 * $[3, 4]$ (`ba`, $k=3$): $[3,3]\{B\} \times [4,4]\{A,C\} \implies BA \to A,\; BC \to S \implies \mathbf{\{A, S\}}$
 
 #### Paso 3: Largo 3 (2 cortes por celda)
-* $[0, 2]$ (`baa`):
-  * $k=0$: $[0,0]\{B\} \times [1,2]\{B\} \implies BB$ (no existe)
-  * $k=1$: $[0,1]\{A,S\} \times [2,2]\{A,C\} \implies AA, AC, SA, SC$ (no existen) $\implies \mathbf{\emptyset}$
-* $[1, 3]$ (`aab`):
-  * $k=1$: $[1,1]\{A,C\} \times [2,3]\{S,C\} \implies CC \to B$
-  * $k=2$: $[1,2]\{B\} \times [3,3]\{B\} \implies BB$ (no existe) $\implies \mathbf{\{B\}}$
-* $[2, 4]$ (`aba`):
-  * $k=2$: $[2,2]\{A,C\} \times [3,4]\{A,S\} \implies$ (no existen)
-  * $k=3$: $[2,3]\{S,C\} \times [4,4]\{A,C\} \implies CC \to B \implies \mathbf{\{B\}}$
+* $[0, 2]$ (`baa`): $\mathbf{\emptyset}$
+* $[1, 3]$ (`aab`): $\mathbf{\{B\}}$
+* $[2, 4]$ (`aba`): $\mathbf{\{B\}}$
 
 #### Paso 4: Largo 4 (3 cortes por celda)
-* $[0, 3]$ (`baab`):
-  * Ninguna combinación válida produce reglas $\implies \mathbf{\emptyset}$
-* $[1, 4]$ (`aaba`):
-  * $k=1$: $[1,1]\{A,C\} \times [2,4]\{B\} \implies AB \to S, C$
-  * $k=2$: $[1,2]\{B\} \times [3,4]\{A,S\} \implies BA \to A$
-  * $k=3$: $[1,3]\{B\} \times [4,4]\{A,C\} \implies BA \to A,\; BC \to S$
-  * **Resultado:** $\mathbf{\{S, C, A\}}$
+* $[0, 3]$ (`baab`): $\mathbf{\emptyset}$
+* $[1, 4]$ (`aaba`): $\mathbf{\{S, C, A\}}$
 
 #### Paso 5: Largo 5 (Frase Completa $[0, 4]$, 4 cortes)
 * $k=0$: $[0,0]\{B\} \times [1,4]\{S,C,A\} \implies BC \to S,\; BA \to A \implies \mathbf{\{S, A\}}$
 * $k=1$: $[0,1]\{A,S\} \times [2,4]\{B\} \implies AB \to C \implies \mathbf{\{C\}}$
-* $k=2, 3$: pedazos vacíos $\implies \emptyset$
 * **Resultado Celda Final $[0, 4]$:** $\mathbf{\{S, A, C\}}$
 
 **Veredicto:** Como el símbolo inicial $S \in T[0][4]$, la frase **SÍ** pertenece al lenguaje.
 
 ---
 
-## 4. Caso de Estudio: Gramática en Inglés y «She eats a cake with a fork»
+## 5. Caso de Estudio: Gramática en Inglés y Parse Tree
 
-### 4.1 Gramática en CNF
-Al procesar la gramática del proyecto con nuestro módulo de simplificación, se obtiene:
+### 5.1 Gramática en CNF
 ```text
 S0  -> NP VP
 VP  -> VP PP | V NP | cooks | drinks | eats | cuts
@@ -193,19 +208,8 @@ P   -> in | with
 N   -> cat | dog | beer | cake | juice | meat | soup | fork | knife | oven | spoon
 Det -> a | the
 ```
-*El conversor asignó `S0` como el nuevo símbolo inicial para garantizar que cumpla formalmente las condiciones de Chomsky.*
 
-### 4.2 Proceso Dinámico sobre «She eats a cake with a fork»
-* **Largo 1:** `she` $\{NP\}$, `eats` $\{V, VP\}$, `a` $\{Det\}$, `cake` $\{N\}$, `with` $\{P\}$, `a` $\{Det\}$, `fork` $\{N\}$.
-* **Largo 2:** `[0,1]` (`she eats`) produce $\{S_0\}$; `[2,3]` (`a cake`) produce $\{NP\}$; `[5,6]` (`a fork`) produce $\{NP\}$.
-* **Largo 3:** `[1,3]` (`eats a cake`) produce $\{VP\}$ ($V + NP$); `[4,6]` (`with a fork`) produce $\{PP\}$ ($P + NP$).
-* **Largo 4:** `[0,3]` (`she eats a cake`) produce $\{S_0\}$.
-* **Largo 6:** `[1,6]` (`eats a cake with a fork`) combina $[1,3]\{VP\} \times [4,6]\{PP\}$ vía $VP \to VP\ PP$, produciendo $\{VP\}$.
-* **Largo 7 (Celda Raíz $[0, 6]$):** Combina $[0,0]\{NP\} \times [1,6]\{VP\}$ vía regla $S_0 \to NP\ VP$, produciendo $\{S_0\}$.
-
-**Resultado:** **SÍ**, la frase es sintácticamente correcta.
-
-### 4.3 Reconstrucción del Parse Tree mediante Back-Pointers
+### 5.2 Reconstrucción del Parse Tree mediante Back-Pointers
 Al registrar las decisiones en cada celda, la función recursiva desciende generando el siguiente árbol:
 ```text
 S0
@@ -234,53 +238,87 @@ S0
 
 ---
 
-## 5. Batería de Pruebas y Resultados de Validación
+## 6. Ejemplos, Pruebas Realizadas y Capturas de Pantalla
 
-### 5.1 Frases Aceptadas (Pertenecen al Lenguaje)
+A continuación se presentan los resultados visuales obtenidos en la aplicación containerizada bajo Docker:
 
-| Frase | Resultado | Tiempo (ms) | Derivación Principal |
-| :--- | :---: | :---: | :--- |
-| `She eats a cake with a fork` | **SÍ** | ~0.05 ms | `S0 -> NP VP`, con `VP -> VP PP`. |
-| `The cat drinks the beer` | **SÍ** | ~0.04 ms | `S0 -> NP VP`, con `VP -> V NP`. |
-| `He cuts meat with a knife` | **SÍ** | ~0.06 ms | `NP -> he`, `VP -> VP PP`. |
-| `The dog drinks` | **SÍ** | ~0.03 ms | `NP -> Det N`, `VP -> drinks` (intransitivo). |
-| `A cat cooks meat in an oven` | **SÍ** | ~0.06 ms | Uso de preposición de lugar `in`. |
+### 6.1 Prueba 1: Frase Aceptada con Árbol Sintáctico Interactivo
+* **Frase:** `She eats a cake with a fork`
+* **Veredicto:** **SÍ (Aceptada)**
+* **Tiempo:** 0.0643 ms
 
-### 5.2 Frases Rechazadas (No Pertenecen al Lenguaje)
-
-| Frase | Resultado | Tiempo (ms) | Causa de Rechazo |
-| :--- | :---: | :---: | :--- |
-| `The cat drinks beer` | **NO** | ~0.03 ms | La gramática exige `NP -> Det N`, por lo que el sustantivo `beer` requiere determinante. |
-| `She eats fork` | **NO** | ~0.03 ms | Ausencia del determinante `a` o `the` en el objeto directo. |
-| `Cat drinks the beer` | **NO** | ~0.03 ms | El sustantivo sujeto `cat` carece de determinante. |
-| `With a fork she eats` | **NO** | ~0.04 ms | Orden sintáctico inválido (`PP NP VP` no deriva de `S0`). |
-| `She runs fast` | **NO** | ~0.02 ms | Vocabulario desconocido (`runs`, `fast` no están en el léxico). |
+![Árbol Sintáctico Frase Aceptada](docs/screenshots/01_arbol_sintactico_aceptada.png)
 
 ---
 
-## 6. Obstáculos Encontrados y Recomendaciones
+### 6.2 Prueba 2: Tabla de Programación Dinámica CYK ($T[i][j]$)
+Muestra la matriz triangular donde cada celda almacena el conjunto de variables sintácticas generadoras y la celda superior derecha confirma la presencia de $\{S_0\}$.
 
-### 6.1 Obstáculos
-1. **Representación de Celdas con Ambigüedad:**  
-   Si una misma subcadena puede ser producida por múltiples reglas distintas (ambigüedad sintáctica), un diccionario simple sobrescribiría el back-pointer.  
-   *Solución:* Se preservó la primera derivación encontrada (`if A not in T[i][j]`) para asegurar un árbol determinista y prevenir ciclos.
-2. **Compatibilidad en Consolas de Windows:**  
-   El uso de caracteres Unicode de dibujo (`└──`, `├──`) causaba excepciones `UnicodeEncodeError` en consolas configuradas con `cp1252`.  
-   *Solución:* Se implementó un formateador seguro con caracteres ASCII (`\--`, `+--`, `|`).
-3. **Manejo del Símbolo Inicial nuevo ($S_0$):**  
-   Al convertir a CNF, el conversor introduce $S_0$. Si el evaluador de CYK buscaba el símbolo inicial anterior ($S$), las oraciones eran rechazadas incorrectamente.  
-   *Solución:* La función `convertir_a_cnf` retorna explícitamente el nuevo símbolo inicial válido (`nuevo_inicial`), vinculándolo directamente con CYK.
-
-### 6.2 Recomendaciones
-* **Visualización Dinámica:** Se implementó `app.py`, un frontend interactivo con **D3.js** y **Tailwind CSS** que permite explorar visualmente el árbol sintáctico (zoom y pan) y la matriz triangular $T[i][j]$ completa.
-* **Preprocesamiento:** Se recomienda incorporar normalización léxica (lematización y filtrado de signos de puntuación) si se desea extender la gramática a textos reales en inglés más complejos.
+![Tabla Dinámica CYK](docs/screenshots/02_tabla_dinamica_cyk.png)
 
 ---
 
-## 7. Referencias Bibliográficas y Material Consultador
+### 6.3 Prueba 3: Frase Rechazada (Sintaxis Inválida)
+* **Frase:** `The cat drinks beer`
+* **Veredicto:** **NO (Rechazada)**
+* **Tiempo:** 0.0440 ms
+* **Motivo:** En esta gramática, `beer` es sustantivo `N`, pero la regla sintáctica para objeto directo exige `NP -> Det N`, por lo que la ausencia de `the` o `a` invalida la frase.
 
-1. **Hopcroft, J. E., Motwani, R., & Ullman, J. D.** (2006). *Introduction to Automata Theory, Languages, and Computation*. Addison-Wesley.
-2. **Jurafsky, D., & Martin, J. H.** (2023). *Speech and Language Processing (3rd ed.)*. Capítulo sobre *Context-Free Grammars and CYK Parsing*.
-3. **Cocke-Younger-Kasami (CYK) Algorithm:** [GeeksforGeeks Compiler Design Reference](https://www.geeksforgeeks.org/compiler-design/cocke-younger-kasami-cyk-algorithm/)
-4. **Mijangos de la Cruz, V.** *Lingüística Computacional: CYK Parsing*. [Enlace al recurso](https://victormijangosdelacruz.github.io/Linguistica-Computacional/html/04%20CYKParsing.html)
-5. **Universidade da Coruña:** *Apuntes y ejercicios del algoritmo CYK*. [Documento Studocu](https://www.studocu.com/es/document/universidade-da-coruna/teoria-da-computacion/algoritmocyk-enunciado/54918074)
+![Frase Rechazada](docs/screenshots/03_frase_rechazada.png)
+
+---
+
+### 6.4 Prueba 4: Segunda Frase Aceptada
+* **Frase:** `The cat drinks the beer`
+* **Veredicto:** **SÍ (Aceptada)**
+* **Tiempo:** 0.0691 ms
+
+![Segunda Frase Aceptada](docs/screenshots/04_segunda_frase_aceptada.png)
+
+---
+
+### 6.5 Tabla Comparativa de Pruebas
+
+| Frase Evaluada | Veredicto | Tiempo (ms) | Diagnóstico Sintáctico |
+| :--- | :---: | :---: | :--- |
+| `She eats a cake with a fork` | **SÍ** | 0.064 ms | Oración compuesta con sintagma preposicional instrumental. |
+| `The cat drinks the beer` | **SÍ** | 0.069 ms | Sujeto + Verbo Transitivo + Objeto Directo definido. |
+| `He cuts meat with a knife` | **SÍ** | 0.061 ms | Pronombres personales directos (`he`). |
+| `The cat drinks beer` | **NO** | 0.044 ms | Rechazada: falta determinante en objeto directo. |
+| `She eats fork` | **NO** | 0.041 ms | Rechazada: falta determinante antes de `fork`. |
+| `She runs fast` | **NO** | 0.022 ms | Rechazada: vocabulario desconocido fuera de la gramática. |
+
+---
+
+## 7. Discusión, Obstáculos Encontrados y Recomendaciones
+
+### 7.1 Obstáculos Encontrados
+1. **Pérdida de Información Léxica en Producciones Unitarias:**  
+   Al eliminar producciones unitarias (ejemplo: `VP -> eats`), el símbolo `eats` queda catalogado tanto como verbo `V` como frase verbal `VP`. Esto causaba ambigüedades en la diagonal de largo 1.  
+   *Solución:* Se indexaron todas las opciones unarias en sets para permitir que el análisis considere ambos roles sintácticos en las combinaciones superiores.
+2. **Reconstrucción Determinista del Árbol Sintáctico:**  
+   Cuando existen múltiples particiones válidas para una misma subcadena, almacenar listas generaba bosques exponenciales.  
+   *Solución:* Se optó por una política *first-match* en el back-pointer para garantizar un árbol único, determinista y de costo $O(n)$ en memoria durante el recorrido.
+3. **Containerización y Despliegue de React sin Servidores Externos:**  
+   Para evitar obligar al usuario a correr `npm run dev` y `python app.py` en consolas separadas, se diseñó un `Dockerfile` multi-stage: Node.js compila el bundle estático de Vite y Python lo sirve junto a la API REST en el puerto `5000`.
+
+### 7.2 Recomendaciones
+* Para gramáticas ambiguas más complejas del procesamiento del lenguaje natural (NLP), se recomienda evolucionar a **Probabilistic CYK (PCYK)** con pesos de probabilidad en cada producción.
+* El frontend desarrollado con D3.js y Tailwind CSS demostró ser altamente útil para la docencia y comprensión del algoritmo, por lo que se recomienda para futuras demostraciones en el curso.
+
+---
+
+## 8. Instrucciones de Ejecución con Docker
+
+Para levantar toda la aplicación (Backend + Frontend React) en un solo comando:
+
+```bash
+docker compose up --build -d
+```
+Luego abre tu navegador en:  
+**[http://localhost:5000](http://localhost:5000)**
+
+Para detener el contenedor:
+```bash
+docker compose down
+```
