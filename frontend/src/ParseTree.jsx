@@ -8,7 +8,7 @@ export default function ParseTree({ data }) {
   useEffect(() => {
     if (!data || !svgRef.current || !containerRef.current) return;
 
-    const width = containerRef.current.clientWidth || 650;
+    const width = containerRef.current.clientWidth || 800;
     const height = 480;
 
     const svg = d3.select(svgRef.current);
@@ -38,7 +38,7 @@ export default function ParseTree({ data }) {
       .enter()
       .append("path")
       .attr("fill", "none")
-      .attr("stroke", "#475569")
+      .attr("stroke", "#443850")
       .attr("stroke-width", 2)
       .attr(
         "d",
@@ -60,28 +60,52 @@ export default function ParseTree({ data }) {
     node
       .append("circle")
       .attr("r", (d) => (d.children ? 16 : 14))
-      .attr("fill", (d) => (d.children ? "#4f46e5" : "#10b981"))
-      .attr("stroke", (d) => (d.children ? "#818cf8" : "#34d399"))
-      .attr("stroke-width", 2)
-      .attr("class", "shadow-lg cursor-pointer hover:scale-110 transition");
+      .attr("fill", (d) => (d.children ? "#2b2338" : "#211b2b"))
+      .attr("stroke", (d) => (d.children ? "#b64cff" : "#5ce08b"))
+      .attr("stroke-width", 2.5);
 
     // Etiquetas de los símbolos
     node
       .append("text")
       .attr("dy", -22)
       .attr("text-anchor", "middle")
-      .attr("fill", "#f8fafc")
-      .attr("font-family", "JetBrains Mono, monospace")
-      .attr("font-size", "12px")
+      .attr("fill", "#f7f2ff")
+      .attr("font-family", "'SFMono-Regular', Consolas, monospace")
+      .attr("font-size", "13px")
       .attr("font-weight", "600")
       .text((d) => d.data.simbolo);
   }, [data]);
 
   return (
-    <div ref={containerRef} className="w-full h-[480px] bg-slate-950 rounded-xl relative overflow-hidden border border-slate-800">
-      <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
-      <div className="absolute bottom-3 right-3 text-[11px] text-slate-500 bg-slate-900/80 px-2 py-1 rounded border border-slate-800 pointer-events-none">
-        Usa scroll para Zoom &bull; Arrastra para mover
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "480px",
+        background: "var(--bg)",
+        border: "1px solid var(--border)",
+        borderRadius: "8px",
+        position: "relative",
+        overflow: "hidden"
+      }}
+    >
+      <svg ref={svgRef} style={{ width: "100%", height: "100%", cursor: "grab" }} />
+      <div
+        style={{
+          position: "absolute",
+          bottom: "10px",
+          right: "12px",
+          fontSize: "11px",
+          fontFamily: "var(--mono)",
+          color: "var(--text)",
+          background: "var(--surface)",
+          padding: "4px 8px",
+          borderRadius: "4px",
+          border: "1px solid var(--border)",
+          pointerEvents: "none"
+        }}
+      >
+        Scroll para zoom &bull; Arrastra para mover
       </div>
     </div>
   );
